@@ -1547,7 +1547,7 @@ function openHelp(){
 }
 function closeHelp(){const sh=$("#helpSheet");if(sh.hidden)return;sh.classList.remove("in");sh.classList.add("out");setTimeout(()=>{sh.hidden=true;sh.classList.remove("out");},220);}
 $("#helpSheet").querySelectorAll("[data-hclose]").forEach(b=>b.addEventListener("click",closeHelp));
-let medOpen=false,careSub=null,careClean=false,handlesOff=false,faceOn=false; // null | "med"
+let moveMode=false,brushPts=[],medOpen=false,careSub=null,careClean=false,handlesOff=false,faceOn=false; // null | "med"
 function pickHelp(k){
   closeHelp();if(view!=="today")setView("today");
   const fresh=!helpMode;helpMode=k;careSub=null;
@@ -1575,9 +1575,10 @@ function helpCard(){
   const row=(id,icon,t,sub)=>`<button class="care-row" id="${id}">${ic(icon)}<span class="ca-t"><b>${t}</b>${sub?`<small>${sub}</small>`:""}</span></button>`;
   const has=todayOnSide().length;
   return `<div class="helpcard care"><div class="care-top"><b>מרכז העזרה</b><span><button class="textbtn" id="poseReset">תנוחה רגילה</button><button class="btn sm" id="helpDone">סיום</button></span></div>
-    <p class="care-hint">גררי ידיים ורגליים כדי למתוח · החזיקי על הגוף כדי לעסות</p>
+    <p class="care-hint">בחרי מה מתאים לך עכשיו</p>
     <div class="care-list">
-      ${has?row("goClean",SPARK,"לנקות את הכאב",pc>=100?"נוקה · אפשר לנקות שוב":pc?`ניקית ${pc}%`:""):""}
+      ${row("goMove",'<path d="M5 12a7 7 0 0 1 14 0"/><path d="M5 12l-1.2-4M5 12l4-1.2M19 12l1.2-4M19 12l-4-1.2"/><circle cx="12" cy="17" r="1.6"/>',"להזיז את הידיים ולעסות",moveMode?"גררי את החצים הירוקים על הדמות":"")}
+      ${row("goClean",SPARK,"לנקות את הכאב",!has?"אין כתמים בצד הזה היום":pc>=100?"נוקה · אפשר לנקות שוב":pc?`ניקית ${pc}%`:"לצבוע את הכאב החוצה במכחול רך")}
       ${row("goBreath",'<path d="M4 9c3 0 4-3 8-3s5 3 8 3M4 15c3 0 4 3 8 3s5-3 8-3"/>',"לנשום את הכאב החוצה","")}
       ${row("goMed",'<rect x="4" y="9" width="16" height="7" rx="3.5" transform="rotate(-35 12 12.5)"/><path d="M10 7.5l4 9"/>',"לקחתי משכך",medOpen?"":"טיימר עד שזה פועל")}
       ${medOpen?`<div class="medinline"><input id="medName" maxlength="40" placeholder="איזו תרופה? (לא חובה)"><div class="rp-range" id="medMins">${[20,30,45,60].map(n=>`<button class="chip" data-mm="${n}" aria-pressed="${n===medMin}">${n} דק׳</button>`).join("")}</div><button class="btn sm" id="medGo">להתחיל טיימר</button></div>`:""}
@@ -1591,7 +1592,8 @@ function bindHelpCard(){
   on("helpDone",endHelp);on("poseReset",()=>poseTo(restPose()));
   on("goBreath",()=>pickHelp("breath"));on("careBack",()=>{if(helpMode==="breath")pickHelp("care");else renderToday();});
   on("goMed",()=>{medOpen=!medOpen;renderToday();if(medOpen)setTimeout(()=>{const i=$("#medGo");if(i)i.scrollIntoView({block:"end",behavior:"smooth"});},60);});
-  on("goClean",()=>{careClean=true;renderToday();});on("cleanEnd",()=>{careClean=false;renderToday();});
+  on("goClean",()=>{careClean=true;moveMode=false;renderToday();});
+  on("goMove",()=>{moveMode=!moveMode;handlesOff=false;renderToday();});on("cleanEnd",()=>{careClean=false;renderToday();});
   on("cleanAgain",()=>{todayOnSide().forEach(e=>delete fadeAmt[e.id]);if(LV)LV.ms.forEach((m,i)=>{const el=document.getElementById("lvM"+i);if(el){el.style.transition="opacity 1.2s";el.style.opacity="1";}});renderToday();});
   if($("#medMins"))$("#medMins").querySelectorAll("[data-mm]").forEach(b=>b.addEventListener("click",()=>{medMin=+b.dataset.mm;$("#medMins").querySelectorAll("[data-mm]").forEach(x=>x.setAttribute("aria-pressed",x===b));}));
   on("medGo",()=>{const a=loadMeds();a.push({ts:Date.now(),min:medMin,name:$("#medName").value.trim()});saveMeds(a);medOpen=false;renderToday();toast("הטיימר התחיל · מופיע במסך הראשי");});
@@ -1752,10 +1754,11 @@ function pupLoop(t){
     $("#ppEyesO").setAttribute("transform",blink?"translate(0 74) scale(1 .15) translate(0 -74)":"");}
   const dt=Math.min(.1,(t-(pupLoop.lt||t))/1000);pupLoop.lt=t;
   if(massage&&massage.on)rubPuppet(massage.p);
+  brushFrame(t);
   massageAmt=pupGrab?Math.min(1,massageAmt+dt*.22):Math.max(0,massageAmt-dt*.14);
   {const a=massageAmt,w=4+4*a,c=5.5*a;$("#ppMouth").setAttribute("d",`M${(151-w).toFixed(1)} ${(100-a).toFixed(1)} q${w.toFixed(1)} ${c.toFixed(1)} ${(2*w).toFixed(1)} 0`);
     if(helpMode!=="breath"){$("#ppEyesH").setAttribute("opacity",a>.6?".8":"0");$("#ppEyesO").setAttribute("opacity",a>.6?"0":".8");}}
-  {const L=$("#mLight");if(L){const on=massage&&massage.on;mLightA+=((on?1:0)-mLightA)*.08;L.setAttribute("opacity",mLightA.toFixed(3));
+  {const L=$("#mLight");if(L){const on=massage&&massage.on&&!careClean;mLightA+=((on?1:0)-mLightA)*.08;L.setAttribute("opacity",mLightA.toFixed(3));
     if(on)mLightP=massage.p;if(mLightP){L.setAttribute("transform",`translate(${mLightP[0].toFixed(1)} ${mLightP[1].toFixed(1)})`);
       [0,1].forEach(i=>{const ph=((t/2600)+i*.5)%1,c=document.getElementById("mP"+i);c.setAttribute("r",(18+46*ph).toFixed(1));c.setAttribute("opacity",(Math.sin(ph*Math.PI)*.8).toFixed(2));});
       const g=$("#ppGlow"),k=(Math.sin(t/700)+1)/2;g.setAttribute("r",(28+6*k).toFixed(1));
@@ -1857,6 +1860,7 @@ function buildLiving(k){
     ${ms.map((m,i)=>`<g id="lvM${i}"><circle r="${(markR(m[2].intensity)*(m[2].s||1)*.85).toFixed(1)}" fill="${m[2].color}" opacity=".3"/><circle r="${(markR(m[2].intensity)*(m[2].s||1)*.5).toFixed(1)}" fill="${m[2].color}" opacity=".35"/></g>`).join("")}
     <defs><radialGradient id="rbG"><stop id="rb0" offset="0" stop-color="#fff" stop-opacity=".85"/><stop id="rb1" offset=".45" stop-color="#F6DDE8" stop-opacity=".55"/><stop id="rb2" offset="1" stop-color="#E5E0F6" stop-opacity="0"/></radialGradient>
       <radialGradient id="rbP"><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop id="rp1" offset=".85" stop-color="#F6DDE8" stop-opacity=".45"/><stop id="rp2" offset="1" stop-color="#F6DDE8" stop-opacity="0"/></radialGradient></defs>
+    <g id="brush" fill="none" stroke-linecap="round" stroke-linejoin="round"></g>
     <g id="mLight" opacity="0"><circle id="mP0" r="30" fill="url(#rbP)"/><circle id="mP1" r="30" fill="url(#rbP)"/><circle id="ppGlow" r="30" fill="url(#rbG)"/></g>
     ${k!=="breath"?`<g id="lvHandles">${[0,1,2,3].map(i=>`<g id="hd${i}"><g class="hsway" style="animation-delay:${i*.6}s"><path d="M-17 -6 A18 18 0 0 1 17 -6" class="harc"/><path d="M-17 -6 l-1 -6 M-17 -6 l6 -1.5 M17 -6 l1 -6 M17 -6 l-6 -1.5" class="harc"/></g><circle class="hdot" r="4.5"/></g>`).join("")}</g>`:""}
     <g id="lvFace" fill="none" stroke="#2E2A25" stroke-linecap="round" opacity="${k==="breath"?1:0}" style="transition:opacity .6s">
@@ -1881,8 +1885,8 @@ function livingFrame(b,wisp){
   LV.ms.forEach((m,i)=>{const hd=Math.hypot(m[0]-151,m[1]-76)<52,w=m.w||(m.w=hd?[1,1,0]:weigh(m[0],m[1],RB));const q=X(m[0],m[1],w,hd);document.getElementById("lvM"+i).setAttribute("transform",`translate(${q[0].toFixed(1)} ${q[1].toFixed(1)})`);});
   $("#lvFace").setAttribute("transform",`rotate(${pose.spine.toFixed(2)} 151 300) rotate(${pose.head.toFixed(2)} 151 128) translate(0 ${(-5.5*b).toFixed(2)})`);
   $("#ppWisp").setAttribute("opacity",wisp.toFixed(2));
-  const H=$("#lvHandles");{const mt=$("#moveTag"),show=!!H&&!handlesOff&&!careClean&&helpMode==="care";if(mt.hidden===show)mt.hidden=!show;}
-  if(H){H.style.opacity=(handlesOff||careClean)?"0":"1";if(!handlesOff){
+  const H=$("#lvHandles");{const mt=$("#moveTag"),show=!!H&&moveMode&&!handlesOff&&!careClean&&helpMode==="care";if(mt.hidden===show)mt.hidden=!show;}
+  if(H){H.style.opacity=(handlesOff||careClean||!moveMode)?"0":"1";if(!handlesOff){
     const pts=[limbFK("a",-1,pose,pose.spine).H,limbFK("a",1,pose,pose.spine).H,limbFK("l",-1,pose,0).H,limbFK("l",1,pose,0).H];
     pts.forEach((q,i)=>document.getElementById("hd"+i).setAttribute("transform",`translate(${q[0].toFixed(1)} ${q[1].toFixed(1)})`));}}
 }
@@ -1899,6 +1903,19 @@ function auraFrame(t,inh,b){
     s0.setAttribute("stop-color",col);s1.setAttribute("stop-color",col);
     const ph=t/1000*(.18+i*.05)+i*1.7,cx=151+Math.sin(ph)*(i<3?60:80)+(i===1?-40:i===2?40:0),cy=(i<3?220:200)+Math.cos(ph*.8)*(i<3?70:120)+(i===0?-60:0);
     const el=document.getElementById("bgC"+i);el.setAttribute("cx",cx.toFixed(1));el.setAttribute("cy",cy.toFixed(1));el.setAttribute("transform",`translate(${cx.toFixed(1)} ${cy.toFixed(1)}) scale(${(1+.18*b).toFixed(3)}) translate(${(-cx).toFixed(1)} ${(-cy).toFixed(1)})`);}
+}
+
+/* cleaning paints a soft watercolor brush stroke that follows the finger and slowly fades */
+function brushFrame(t){
+  const B=document.getElementById("brush");if(!B)return;
+  if(careClean&&massage&&massage.on&&massage.p){const l=brushPts[brushPts.length-1];if(!l||Math.hypot(l.x-massage.p[0],l.y-massage.p[1])>1.5)brushPts.push({x:massage.p[0],y:massage.p[1],t});}
+  brushPts=brushPts.filter(p=>t-p.t<1800);
+  if(brushPts.length<2){if(B.firstChild)B.innerHTML="";return;}
+  const h=(t/60)%360;let html="";
+  for(let i=1;i<brushPts.length;i+=3){const seg=brushPts.slice(Math.max(0,i-1),i+3);if(seg.length<2)continue;const age=(t-seg[0].t)/1800,a=Math.max(0,1-age);
+    const d="M"+seg.map(p=>p.x.toFixed(1)+" "+p.y.toFixed(1)).join(" L");const hu=((h+i*2)%360).toFixed(0);
+    html+=`<path d="${d}" stroke="hsl(${hu},65%,84%)" stroke-width="${(26*(.6+.4*a)).toFixed(1)}" opacity="${(a*.35).toFixed(2)}"/><path d="${d}" stroke="hsl(${hu},70%,90%)" stroke-width="${(11*(.6+.4*a)).toFixed(1)}" opacity="${(a*.55).toFixed(2)}"/>`;}
+  B.innerHTML=html;
 }
 function pupPt(ev){const sv=$("#puppet"),q=sv.createSVGPoint();q.x=ev.clientX;q.y=ev.clientY;const r=q.matrixTransform(sv.getScreenCTM().inverse());return [r.x,r.y];}
 function pickPart(p){
@@ -1940,7 +1957,7 @@ function rubPuppet(p){ // massaging cleans the pain marks under the finger (only
 }
 function startPuppet(k){
   pose=restPose();breathN=0;lastPhase="";massageAmt=0;pupLoop.lt=0;
-  $("#puppet").setAttribute("viewBox","0 -80 304 556");careClean=false;handlesOff=false;buildLiving(k);
+  $("#puppet").setAttribute("viewBox","0 -80 304 556");careClean=false;handlesOff=false;moveMode=false;brushPts=[];buildLiving(k);
   $("#careTurn").hidden=k==="breath";$("#careTurnL").textContent=side==="back"?"לחזית":"לגב";
   $("#bigCap").textContent="";$("#bigCap").dataset.t="";$("#bigCnt").textContent="";$("#bigCapWrap").hidden=k!=="breath";$("#app").classList.toggle("breathing",k==="breath");
   $("#puppet").removeAttribute("hidden");$("#figWrap").style.visibility="hidden";pupOn=true;pupT0=performance.now();cancelAnimationFrame(pupRaf);pupRaf=requestAnimationFrame(pupLoop);
