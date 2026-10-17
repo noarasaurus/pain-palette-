@@ -611,6 +611,9 @@ svg.big{width:100%;height:min(40vh,340px);display:block;overflow:visible}
 .top{gap:12px}
 .top .instr{text-align:left;font-size:17px}
 @media (max-width:820px){.brand-pal{width:30px;height:25px}.brand-t b{font-size:14px}.brand-t small{font-size:10px}.top .instr{font-size:15px}}
+.movetag{position:absolute;left:50%;top:8px;transform:translateX(-50%);z-index:4;display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:rgba(214,236,224,.85);color:#4F7A5E;font-size:13px;white-space:nowrap;pointer-events:none;animation:fadeIn .5s ease-out}
+.movetag svg{width:18px;height:18px}
+.movetag[hidden]{display:none}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -669,6 +672,7 @@ svg.big{width:100%;height:min(40vh,340px);display:block;overflow:visible}
         </g></g>
       </svg></div>
  <div class="bigcap" id="bigCapWrap" hidden><div id="bigCap"></div><div class="bprog"><i id="bFill"></i></div><div id="bigCnt"></div></div>
+      <div class="movetag" id="moveTag" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M5 11a8 8 0 0 1 14 0"/><path d="M5 11l-1-4M5 11l4-1M19 11l1-4M19 11l-4-1"/></svg>הזיזו את הידיים והרגליים כדי לעסות את הכאב</div>
       <button class="careturn" id="careTurn" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 12a8 8 0 0 1 14-5.3M20 12a8 8 0 0 1-14 5.3"/><path d="M18 3v4h-4M6 21v-4h4"/></svg><span id="careTurnL">לגב</span></button>
       <svg id="puppet" viewBox="-35 -15 370 500" preserveAspectRatio="xMidYMid meet" direction="ltr" hidden aria-label="בובה שאפשר להזיז"></svg>
       <div class="taphint" id="tapHint" hidden><i></i><i></i></div>
@@ -1877,7 +1881,8 @@ function livingFrame(b,wisp){
   LV.ms.forEach((m,i)=>{const hd=Math.hypot(m[0]-151,m[1]-76)<52,w=m.w||(m.w=hd?[1,1,0]:weigh(m[0],m[1],RB));const q=X(m[0],m[1],w,hd);document.getElementById("lvM"+i).setAttribute("transform",`translate(${q[0].toFixed(1)} ${q[1].toFixed(1)})`);});
   $("#lvFace").setAttribute("transform",`rotate(${pose.spine.toFixed(2)} 151 300) rotate(${pose.head.toFixed(2)} 151 128) translate(0 ${(-5.5*b).toFixed(2)})`);
   $("#ppWisp").setAttribute("opacity",wisp.toFixed(2));
-  const H=$("#lvHandles");if(H){H.style.opacity=(handlesOff||careClean)?"0":"1";if(!handlesOff){
+  const H=$("#lvHandles");{const mt=$("#moveTag"),show=!!H&&!handlesOff&&!careClean&&helpMode==="care";if(mt.hidden===show)mt.hidden=!show;}
+  if(H){H.style.opacity=(handlesOff||careClean)?"0":"1";if(!handlesOff){
     const pts=[limbFK("a",-1,pose,pose.spine).H,limbFK("a",1,pose,pose.spine).H,limbFK("l",-1,pose,0).H,limbFK("l",1,pose,0).H];
     pts.forEach((q,i)=>document.getElementById("hd"+i).setAttribute("transform",`translate(${q[0].toFixed(1)} ${q[1].toFixed(1)})`));}}
 }
@@ -1941,7 +1946,7 @@ function startPuppet(k){
   $("#puppet").removeAttribute("hidden");$("#figWrap").style.visibility="hidden";pupOn=true;pupT0=performance.now();cancelAnimationFrame(pupRaf);pupRaf=requestAnimationFrame(pupLoop);
 }
 $("#careTurn").addEventListener("click",()=>{careTurn();setTimeout(()=>$("#careTurnL").textContent=side==="back"?"לחזית":"לגב",220);});
-function stopPuppet(){$("#careTurn").hidden=true;$("#bigCapWrap").hidden=true;$("#app").classList.remove("breathing");pupOn=false;cancelAnimationFrame(pupRaf);$("#puppet").setAttribute("hidden","");$("#figWrap").style.visibility="";pupGrab=null;}
+function stopPuppet(){$("#moveTag").hidden=true;$("#careTurn").hidden=true;$("#bigCapWrap").hidden=true;$("#app").classList.remove("breathing");pupOn=false;cancelAnimationFrame(pupRaf);$("#puppet").setAttribute("hidden","");$("#figWrap").style.visibility="";pupGrab=null;}
 $("#puppet").addEventListener("pointerdown",pupDown);$("#puppet").addEventListener("pointermove",pupMove);
 $("#puppet").addEventListener("pointerup",pupUp);$("#puppet").addEventListener("pointercancel",pupUp);
 
